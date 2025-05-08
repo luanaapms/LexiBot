@@ -1,5 +1,3 @@
-# agents/correction_agent.py
-
 import requests
 from typing import Dict, Any
 from agents import BaseAgent
@@ -11,22 +9,33 @@ class LanguageCorrectionAgent(BaseAgent):
         self.api_url = "https://api.languagetool.org/v2/check"
 
     def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        text = inputs["text"]
-        # Chama a API pública do LanguageTool
-        resp = requests.post(self.api_url, data={
-            "text": text,
-            "language": self.lang,
-        })
+        text = inputs.get("text")
+        
+        if not text:
+            raise ValueError("Text input is required for language correction.")
+
+        try:
+            resp = requests.post(self.api_url, data={
+                "text": text,
+                "language": self.lang,
+            })
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            return {"error": f"API request failed: {str(e)}"}
+        
         result = resp.json()
         errors = []
+
         for m in result.get("matches", []):
             offset = m["offset"]
             length = m["length"]
-            errors.append({
+            error_detail = {
                 "offset": offset,
                 "length": length,
-                "original": text[offset:offset+length],
-                "correction": m["replacements"][0]["value"] if m["replacements"] else "",
+                "original": text[offset:offset + length],
+                "correction": m["replacements"][0]["value"] if m["replacements"] else "No suggestion",
                 "ruleId": m["rule"]["id"],
-            })
+            }
+            errors.append(error_detail)
+
         return {"errors": errors}

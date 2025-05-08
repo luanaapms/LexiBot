@@ -1,4 +1,3 @@
-# agents/__init__.py
 from typing import Dict, Any
 
 class BaseAgent:
